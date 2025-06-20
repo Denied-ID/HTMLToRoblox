@@ -1,4 +1,3 @@
--- CssParser.lua
 local CssParser = {}
 
 local function trim(s)

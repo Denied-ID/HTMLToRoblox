@@ -1,13 +1,8 @@
-
--- ComponentRegistry.lua
 local TweenService = game:GetService("TweenService")
 local ComponentRegistry = {}
 
--- Helper to parse CSS color strings (hex, rgb) into Color3
 function ComponentRegistry.parseColor(colorString)
-	colorString = colorString:lower():gsub(" ", "") -- Normalize
-
-	-- Try named colors first
+	colorString = colorString:lower():gsub(" ", "")
 	local NAMED_COLORS = {
 		red = Color3.fromRGB(255, 0, 0),
 		blue = Color3.fromRGB(0, 0, 255),
@@ -16,15 +11,11 @@ function ComponentRegistry.parseColor(colorString)
 		white = Color3.fromRGB(255, 255, 255),
 		grey = Color3.fromRGB(128, 128, 128),
 		gray = Color3.fromRGB(128, 128, 128),
-		transparent = Color3.new(0, 0, 0), -- Placeholder for transparent, will be handled by BackgroundTransparency
-		-- Add more named colors here
+		transparent = Color3.new(0, 0, 0),
 	}
-
 	if NAMED_COLORS[colorString] then
 		return NAMED_COLORS[colorString]
 	end
-
-	-- Try hex color #RRGGBB or RRGGBB
 	colorString = colorString:gsub("#", "")
 	if #colorString == 6 then
 		local r = tonumber(colorString:sub(1,2), 16)
@@ -34,32 +25,23 @@ function ComponentRegistry.parseColor(colorString)
 			return Color3.fromRGB(r, g, b)
 		end
 	end
-
-	-- Try RGB color rgb(r,g,b)
 	local rgbMatch = colorString:match("^rgb%((%d+),(%d+),(%d+)%)$")
 	if rgbMatch then
 		return Color3.fromRGB(tonumber(rgbMatch[1]), tonumber(rgbMatch[2]), tonumber(rgbMatch[3]))
 	end
-
-	-- Default fallback
-	return Color3.new(1,1,1) -- Default to white if parsing fails
+	return Color3.new(1,1,1)
 end
 
--- Helper to parse CSS size strings (e.g., "16px") into a number
 function ComponentRegistry.parseSize(sizeString)
 	if not sizeString then return nil end
-	sizeString = sizeString:lower():gsub(" ", "") -- Normalize
-
+	sizeString = sizeString:lower():gsub(" ", "")
 	local pxMatch = sizeString:match("^(%d+)px$")
 	if pxMatch then
 		return tonumber(pxMatch)
 	end
-
-	-- Add other units if necessary (e.g., em, pt, %, but requires context)
 	return nil
 end
 
--- Helper to apply direct Roblox properties (from entry.defaults, entry.hover, entry.active)
 local function applyRobloxProperties(gui, props)
 	if not gui or not props then return end
 	for key, value in pairs(props) do
@@ -69,9 +51,6 @@ local function applyRobloxProperties(gui, props)
 	end
 end
 
--- Helper to apply a table of CSS-like style properties (strings) to a GUI object
--- This function parses CSS strings and updates existing GUI properties,
--- intelligently preserving UDim2 dimensions when only one is specified by CSS.
 local function applyStyleProperties(gui, styles)
 	if not gui or not styles then return end
 	for key, value in pairs(styles) do
@@ -102,7 +81,6 @@ local function applyStyleProperties(gui, styles)
 				local num, unit = value:match("^(%d+)(px|%%)$")
 				if num then
 					num = tonumber(num)
-					-- Preserve current Y size when setting X
 					gui.Size = UDim2.new(
 						(unit == "%%" and num / 100) or 0,
 						(unit == "px" and num) or 0,
@@ -114,7 +92,6 @@ local function applyStyleProperties(gui, styles)
 				local num, unit = value:match("^(%d+)(px|%%)$")
 				if num then
 					num = tonumber(num)
-					-- Preserve current X size when setting Y
 					gui.Size = UDim2.new(
 						gui.Size.X.Scale,
 						gui.Size.X.Offset,
@@ -151,30 +128,18 @@ local function applyStyleProperties(gui, styles)
 	end
 end
 
--- This function converts any style source (registry or CSS) into a flat table
--- suitable for TweenInfo.Properties. It prioritizes CSS strings.
--- 'currentGui' is used to correctly merge UDim2 components if only one dimension is specified by CSS.
 local function getTweenTargetProperties(registryStateProps, cssStateStyles, currentGui)
 	local targetProps = {}
-
-	-- Initialize targetProps with current GUI's properties.
-	-- This is crucial for UDim2s when only one dimension is specified by CSS,
-	-- or for properties not covered by registryStateProps/cssStateStyles.
 	if currentGui then
 		targetProps.BackgroundColor3 = currentGui.BackgroundColor3
 		targetProps.TextColor3 = currentGui.TextColor3
 		targetProps.TextSize = currentGui.TextSize
 		targetProps.BackgroundTransparency = currentGui.BackgroundTransparency
-		targetProps.Size = currentGui.Size -- Start with current size
+		targetProps.Size = currentGui.Size
 	end
-
-	-- 1. Apply Roblox property values from registryStateProps (e.g., entry.defaults or entry.hover).
-	-- These are the *default* values for the component type's state (base, hover, active).
 	if registryStateProps then
 		for k, v in pairs(registryStateProps) do
-			-- Only include properties that are tweenable. Exclude 'Font'.
 			if (k == "BackgroundColor3" or k == "TextColor3" or k == "TextSize" or k == "BackgroundTransparency" or k == "Size") then
-				-- For Size, merge components, don't just overwrite
 				if k == "Size" then
 					targetProps.Size = UDim2.new(
 						v.X.Scale, v.X.Offset,
@@ -186,9 +151,6 @@ local function getTweenTargetProperties(registryStateProps, cssStateStyles, curr
 			end
 		end
 	end
-
-	-- 2. Overlay CSS properties (these are strings and need parsing).
-	-- These *must* take precedence over registryStateProps.
 	if cssStateStyles then
 		for k, v in pairs(cssStateStyles) do
 			if k == "background-color" then
@@ -206,8 +168,8 @@ local function getTweenTargetProperties(registryStateProps, cssStateStyles, curr
 					targetProps.Size = UDim2.new(
 						(unit == "%%" and num / 100) or 0,
 						(unit == "px" and num) or 0,
-						targetProps.Size.Y.Scale, -- Preserve Y from current targetProps
-						targetProps.Size.Y.Offset  -- Preserve Y from current targetProps
+						targetProps.Size.Y.Scale,
+						targetProps.Size.Y.Offset
 					)
 				end
 			elseif k == "height" then
@@ -215,8 +177,8 @@ local function getTweenTargetProperties(registryStateProps, cssStateStyles, curr
 				if num then
 					num = tonumber(num)
 					targetProps.Size = UDim2.new(
-						targetProps.Size.X.Scale, -- Preserve X from current targetProps
-						targetProps.Size.X.Offset,  -- Preserve X from current targetProps
+						targetProps.Size.X.Scale,
+						targetProps.Size.X.Offset,
 						(unit == "%%" and num / 100) or 0,
 						(unit == "px" and num) or 0
 					)
@@ -224,13 +186,10 @@ local function getTweenTargetProperties(registryStateProps, cssStateStyles, curr
 			end
 		end
 	end
-
 	return targetProps
 end
 
-
 ComponentRegistry.registry = {
-	-- Headings
 	h1 = {
 		create = function(props) 
 			local label = Instance.new("TextLabel") 
@@ -327,8 +286,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1, Font = Enum.Font.SourceSansBold, TextColor3 = Color3.fromRGB(0, 0, 0), TextSize = 16, Size = UDim2.new(1, 0, 0, 0) },
 	},
-
-	-- Text elements
 	p = {
 		create = function(props) 
 			local label = Instance.new("TextLabel") 
@@ -345,8 +302,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1, Font = Enum.Font.SourceSans, TextColor3 = Color3.fromRGB(0, 0, 0), TextSize = 16, Size = UDim2.new(1, 0, 0, 0) },
 	},
-
-	-- Interactive elements
 	button = {
 		create = function(props)
 			local btn = Instance.new("TextButton")
@@ -375,7 +330,6 @@ ComponentRegistry.registry = {
 		active = { BackgroundColor3 = Color3.fromRGB(204, 228, 247) },
 		transitions = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 	},
-
 	input = {
 		create = function(props)
 			local textBox = Instance.new("TextBox")
@@ -398,7 +352,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.SourceSans, TextColor3 = Color3.fromRGB(0, 0, 0), TextSize = 16 },
 	},
-
 	a = {
 		create = function(props) 
 			local label = Instance.new("TextButton") 
@@ -413,8 +366,6 @@ ComponentRegistry.registry = {
 		active = { TextColor3 = Color3.fromRGB(238, 0, 0) },
 		transitions = TweenInfo.new(0.1, Enum.EasingStyle.Linear),
 	},
-
-	-- Lists
 	ul = {
 		create = function(props) 
 			local frame = Instance.new("Frame") 
@@ -433,7 +384,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	ol = {
 		create = function(props) 
 			local frame = Instance.new("Frame") 
@@ -448,13 +398,11 @@ ComponentRegistry.registry = {
 			p.PaddingLeft = UDim.new(0, 20)
 			p.PaddingTop = UDim.new(0, 8)
 			p.PaddingBottom = UDim.new(0, 8)
-			-- Store counter for ordered list
 			frame:SetAttribute("ListCounter", 0)
 			return frame 
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	li = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -469,7 +417,7 @@ ComponentRegistry.registry = {
 
 			local bullet = Instance.new("TextLabel")
 			bullet.Parent = frame
-			bullet.Text = "•" -- Will be overridden for ordered lists
+			bullet.Text = "•"
 			bullet.Size = UDim2.new(0, 20, 0, 20)
 			bullet.BackgroundTransparency = 1
 			bullet.Font = Enum.Font.SourceSans
@@ -494,8 +442,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
-	-- Block elements
 	div = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -508,7 +454,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	section = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -525,7 +470,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	article = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -542,7 +486,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	header = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -558,7 +501,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	footer = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -574,7 +516,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	nav = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -589,8 +530,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
-	-- Formatting elements
 	blockquote = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -614,7 +553,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = {},
 	},
-
 	hr = {
 		create = function(props)
 			local frame = Instance.new("Frame")
@@ -629,8 +567,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = {},
 	},
-
-	-- Form elements
 	form = {
 		create = function(props) 
 			local frame = Instance.new("Frame")
@@ -644,7 +580,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	label = {
 		create = function(props) 
 			local label = Instance.new("TextLabel") 
@@ -657,8 +592,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1, Font = Enum.Font.SourceSansBold, TextColor3 = Color3.fromRGB(0, 0, 0), TextSize = 16, Size = UDim2.new(1, 0, 0, 0) },
 	},
-
-	-- Table elements
 	table = {
 		create = function(props)
 			local frame = Instance.new("Frame")
@@ -676,7 +609,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = {},
 	},
-
 	thead = {
 		create = function(props)
 			local frame = Instance.new("Frame")
@@ -689,7 +621,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = {},
 	},
-
 	tbody = {
 		create = function(props)
 			local frame = Instance.new("Frame")
@@ -702,7 +633,6 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1 },
 	},
-
 	tr = {
 		create = function(props)
 			local frame = Instance.new("Frame")
@@ -721,12 +651,11 @@ ComponentRegistry.registry = {
 		end,
 		defaults = {},
 	},
-
 	td = {
 		create = function(props)
 			local label = Instance.new("TextLabel")
 			label.AutomaticSize = Enum.AutomaticSize.Y
-			label.Size = UDim2.new(0, 100, 0, 0) -- Default width, can be overridden
+			label.Size = UDim2.new(0, 100, 0, 0)
 			label.Text = props.text or ""
 			label.RichText = true
 			label.TextXAlignment = Enum.TextXAlignment.Left
@@ -746,12 +675,11 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundTransparency = 1, Font = Enum.Font.SourceSans, TextColor3 = Color3.fromRGB(0, 0, 0), TextSize = 14 },
 	},
-
 	th = {
 		create = function(props)
 			local label = Instance.new("TextLabel")
 			label.AutomaticSize = Enum.AutomaticSize.Y
-			label.Size = UDim2.new(0, 100, 0, 0) -- Default width, can be overridden
+			label.Size = UDim2.new(0, 100, 0, 0)
 			label.Text = props.text or ""
 			label.RichText = true
 			label.TextXAlignment = Enum.TextXAlignment.Left
@@ -771,12 +699,10 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { BackgroundColor3 = Color3.fromRGB(240, 240, 240), Font = Enum.Font.SourceSansBold, TextColor3 = Color3.fromRGB(0, 0, 0), TextSize = 14 },
 	},
-
-	-- Media elements
 	img = {
 		create = function(props)
 			local frame = Instance.new("Frame")
-			frame.Size = UDim2.new(0, 200, 0, 150) -- Default size
+			frame.Size = UDim2.new(0, 200, 0, 150)
 			frame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
 			local stroke = Instance.new("UIStroke")
 			stroke.Parent = frame
@@ -791,51 +717,40 @@ ComponentRegistry.registry = {
 			label.BackgroundTransparency = 1
 			label.Font = Enum.Font.SourceSans
 			label.TextSize = 14
-			-- Note: In a real implementation, you'd load the image from props.attributes.src
 			return frame
 		end,
 		defaults = {},
 	},
-
-	-- Inline elements (these are handled by RichText but included for completeness)
 	span = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	strong = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	b = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	em = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	i = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	u = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	small = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	code = {
-		create = function(props) return nil end, -- Handled by RichText
+		create = function(props) return nil end,
 	},
-
 	pre = {
 		create = function(props)
 			local label = Instance.new("TextLabel")
 			label.AutomaticSize = Enum.AutomaticSize.Y
 			label.Text = props.text or ""
-			label.RichText = false -- Pre should preserve formatting
+			label.RichText = false
 			label.TextXAlignment = Enum.TextXAlignment.Left
 			label.TextWrapped = true
 			label.BackgroundColor3 = Color3.fromRGB(248, 248, 248)
@@ -852,24 +767,16 @@ ComponentRegistry.registry = {
 		end,
 		defaults = { Font = Enum.Font.RobotoMono, TextColor3 = Color3.fromRGB(0, 0, 0), TextSize = 14, Size = UDim2.new(1, 0, 0, 0) },
 	},
-
-	-- Line break
 	br = {
 		create = function(props)
-			-- For <br> tags, we might simply return a small, transparent frame
-			-- to act as a line break in a UIListLayout, if not handled by RichText.
-			-- However, for rich-text elements, the <br/> tag is directly embedded in the text.
-			-- This component definition mostly serves as a placeholder to acknowledge the tag.
 			local frame = Instance.new("Frame")
-			frame.Size = UDim2.new(1, 0, 0, 10) -- Small height for a line break
+			frame.Size = UDim2.new(1, 0, 0, 10)
 			frame.BackgroundTransparency = 1
 			return frame
 		end,
 		defaults = {},
 	},
 }
-
-
 
 function ComponentRegistry.create(tag, props, baseCssStyles, hoverCssStyles, activeCssStyles)
 	print("tag: " .. tag)
@@ -879,26 +786,15 @@ function ComponentRegistry.create(tag, props, baseCssStyles, hoverCssStyles, act
 	print(activeCssStyles)
 	local entry = ComponentRegistry.registry[tag]
 	if not entry or not entry.create then return nil end
-
-	-- Create the base GUI object (this applies initial UDim2 sizes, UI layouts etc. from entry.create)
 	local gui = entry.create(props or {})
 	if not gui then return nil end
-
-	-- Apply component's internal defaults (direct Roblox property assignments like BackgroundColor3, Font etc.)
 	applyRobloxProperties(gui, entry.defaults)
-
-	-- Apply base CSS styles (parse CSS strings and override existing properties from defaults)
 	if baseCssStyles then
 		applyStyleProperties(gui, baseCssStyles)
 	end
-
-	-- Handle interactive elements (buttons, links)
 	if gui:IsA("GuiButton") then
 		local transitionInfo = entry.transitions or TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-		-- Track hover state to know what to revert to after :active ends
 		local isHovering = false
-
 		local function setFontForState(targetCssStyles, fallbackCssStyles, registryDefaults)
 			local targetFont
 			if targetCssStyles and targetCssStyles["font-weight"] then
@@ -912,47 +808,36 @@ function ComponentRegistry.create(tag, props, baseCssStyles, hoverCssStyles, act
 			end
 			gui.Font = targetFont
 		end
-
-		-- Set initial font
 		setFontForState(baseCssStyles, nil, entry.defaults)
-
 		gui.MouseEnter:Connect(function()
 			isHovering = true
 			local currentHoverProps = getTweenTargetProperties(entry.hover, hoverCssStyles, gui)
 			TweenService:Create(gui, transitionInfo, currentHoverProps):Play()
 			setFontForState(hoverCssStyles, baseCssStyles, entry.hover)
 		end)
-
 		gui.MouseLeave:Connect(function()
 			isHovering = false
-			-- Always revert to base style on leave
 			local currentBaseProps = getTweenTargetProperties({}, baseCssStyles, gui)
 			TweenService:Create(gui, transitionInfo, currentBaseProps):Play()
 			setFontForState(baseCssStyles, nil, entry.defaults)
 		end)
-
 		gui.MouseButton1Down:Connect(function()
 			local currentActiveProps = getTweenTargetProperties(entry.active, activeCssStyles, gui)
 			TweenService:Create(gui, transitionInfo, currentActiveProps):Play()
 			setFontForState(activeCssStyles, baseCssStyles, entry.active)
 		end)
-
 		gui.MouseButton1Up:Connect(function()
-			-- FIXED: Check if mouse is still hovering to decide what state to revert to
 			if isHovering then
-				-- Mouse is still over the button, revert to hover state
 				local currentHoverProps = getTweenTargetProperties(entry.hover, hoverCssStyles, gui)
 				TweenService:Create(gui, transitionInfo, currentHoverProps):Play()
 				setFontForState(hoverCssStyles, baseCssStyles, entry.hover)
 			else
-				-- Mouse has left the button, revert to base state
 				local currentBaseProps = getTweenTargetProperties({}, baseCssStyles, gui)
 				TweenService:Create(gui, transitionInfo, currentBaseProps):Play()
 				setFontForState(baseCssStyles, nil, entry.defaults)
 			end
 		end)
 	end
-
 	return gui
 end
 

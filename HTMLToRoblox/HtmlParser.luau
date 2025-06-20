@@ -1,19 +1,16 @@
--- HtmlParser.lua
 local HtmlParser = {}
 
--- A comprehensive list of void elements (self-closing tags in HTML5)
 local VOID_ELEMENTS = {
 	area = true, base = true, br = true, col = true, embed = true, hr = true,
 	img = true, input = true, link = true, meta = true, param = true,
 	source = true, track = true, wbr = true,
 }
 
--- HTML entities mapping for decoding purposes
 local HTML_ENTITIES = {
 	["&amp;"] = "&",
 	["&lt;"] = "<",
 	["&gt;"] = ">",
-	["&quot;"] = "\"", -- Corrected: escaped double quote
+	["&quot;"] = "\"",
 	["&apos;"] = "'",
 	["&nbsp;"] = " ",
 	["&copy;"] = "©",
@@ -24,12 +21,10 @@ local HTML_ENTITIES = {
 	["&ndash;"] = "–",
 	["&lsquo;"] = "'",
 	["&rsquo;"] = "'",
-	["&ldquo;"] = "\"", -- Corrected: escaped double quote
-	["&rdquo;"] = "\"", -- Corrected: escaped double quote
-	-- Add more common entities as needed
+	["&ldquo;"] = "\"",
+	["&rdquo;"] = "\"",
 }
 
--- Function to decode HTML entities in a string
 local function decodeEntities(text)
 	if not text then return "" end
 	text = tostring(text)
@@ -47,7 +42,6 @@ function HtmlParser.parseAttributes(attrString)
 		attrs[key:lower()] = decodeEntities(value)
 	end
 
-	-- Now capture boolean attributes (e.g. `disabled`, `checked`, etc.)
 	for key in attrString:gmatch("([%w%-]+)%s*") do
 		if attrs[key:lower()] == nil then
 			attrs[key:lower()] = true
@@ -57,29 +51,23 @@ function HtmlParser.parseAttributes(attrString)
 	return attrs
 end
 
--- Main HTML parsing function
 function HtmlParser.parse(html)
 	local root = { tag = "root", attributes = {}, children = {} }
 	local currentParent = root
-	local stack = { root } -- Stack to keep track of parent elements for nesting
-
+	local stack = { root }
 	local cursor = 1
 	while cursor <= #html do
 		local remainingHtml = html:sub(cursor)
-
-		-- Match HTML comments (<!-- ... -->)
 		local commentMatch = remainingHtml:match("^<!--(.*?)-->", 1)
 		if commentMatch then
 			cursor = cursor + #commentMatch + 7
 			continue
 		else
-			-- Match DOCTYPE declaration (<!DOCTYPE ...>)
 			local doctypeMatch = remainingHtml:match("^<!DOCTYPE[^>]*>", 1)
 			if doctypeMatch then
 				cursor = cursor + #doctypeMatch
 				continue
 			else
-				-- Match full self-closing tags (e.g., <img src="x" /> or <br/>)
 				local fullSelfClosingTagMatch, selfClosingTagName, selfClosingAttrsString = remainingHtml:match("^(<([%w%-]+)([^/>]*)%s*/>)", 1)
 				if fullSelfClosingTagMatch then
 					local newNode = {
@@ -91,7 +79,6 @@ function HtmlParser.parse(html)
 					cursor = cursor + #fullSelfClosingTagMatch
 					continue
 				else
-					-- Match open tags (e.g., <div> or <p class="text">)
 					local fullOpenTagMatch, tagName, attrsString = remainingHtml:match("^(<([%w%-]+)([^>]*)>)", 1)
 					if fullOpenTagMatch then
 						tagName = tagName:lower()
@@ -103,28 +90,23 @@ function HtmlParser.parse(html)
 						table.insert(currentParent.children, newNode)
 
 						if not VOID_ELEMENTS[tagName] then
-							-- It's a regular tag, push it to the stack to wait for a closing tag
 							table.insert(stack, newNode)
 							currentParent = newNode
 						end
 						cursor = cursor + #fullOpenTagMatch
 						continue
 					else
-						-- Match close tags (e.g., </div> or </p>)
 						local fullCloseTagMatch, closingTagName = remainingHtml:match("^(</([%w%-]+)>)", 1)
 						if fullCloseTagMatch then
 							closingTagName = closingTagName:lower()
-							-- Pop elements from the stack until we find the matching opening tag
 							local foundMatch = false
 							while #stack > 1 do
 								if currentParent.tag == closingTagName then
-									table.remove(stack) -- Pop the matching tag
-									currentParent = stack[#stack] -- Set new current parent
+									table.remove(stack)
+									currentParent = stack[#stack]
 									foundMatch = true
 									break
 								else
-									-- If the current parent doesn't match, it might be an implicitly closed tag
-									-- or malformed HTML. For robustness, we pop it.
 									warn("HTML Parsing Warning: Mismatched closing tag. Expected '" .. currentParent.tag .. "', got '" .. closingTagName .. "'. Popping stack.")
 									table.remove(stack)
 									currentParent = stack[#stack]
@@ -137,15 +119,12 @@ function HtmlParser.parse(html)
 							cursor = cursor + #fullCloseTagMatch
 							continue
 						else
-							-- Handles text content between tags
-							-- Find the next '<' character, or assume the rest is text
 							local nextTagStart = remainingHtml:find("<", 1, true)
 							if not nextTagStart then nextTagStart = #remainingHtml + 1 end
 							local textContent = remainingHtml:sub(1, nextTagStart - 1)
 
 							if #textContent > 0 then
-								-- Insert raw text. RichText will handle whitespace collapsing.
-								table.insert(currentParent.children, decodeEntities(textContent)) -- Decode entities in text content
+								table.insert(currentParent.children, decodeEntities(textContent))
 							end
 							cursor = cursor + #textContent
 
