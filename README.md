@@ -6,7 +6,6 @@ This is not at all ready for production use, but more for testing enviornments.
 I'm just trying to get this out there for bug testing.
 
 
-‎ 
 
 #  What's "HTML to Roblox"?
 HTML to Roblox is an up and coming module that allows you to place HTML code into the module, and have it convert the contents of that HTML into a Roblox Gui.
