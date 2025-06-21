@@ -23,5 +23,13 @@ I have noticed this question a bit in some older forum posts attempting to do th
 # Does this include things like JavaScript support?
 Absolutely. In fact it also supports other supported features on Html buttons like `onclick="console.log('Button pressed!')`. And that's not all. You can even take a `<script>` delimiter, and add an atribute called `type` (`<script type="">`). Now what's cool about this `type` attribute is you can change the script from JS to LuaU, and it will work the same except it's a different language. Now the JS variant is literally just converted from its JS counterpart, to a Roblox supported variant so it can work in the Roblox engine.
 
-# Want to Contribute?
-Go ahead. The module's source has been placed on this repository for you to look over, and help us improve on for others using the module. Thank's for making HTML to Roblox a better module for everyone.
+# Example
+There a small exemple so you can start to understand 
+```lua
+local HtmlToRoblox = require(game.ReplicatedStorage.HtmlParser)
+
+HtmlToRoblox:Render([[ 
+  <button onclick="print('Clicked!')">Click me!</button> 
+]])
+```
+````
