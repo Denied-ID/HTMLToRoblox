@@ -1,0 +1,9 @@
+{
+  "name": "HTMLToRoblox",
+  "tree": {
+    "$className": "Folder",
+    "HTMLToRoblox": {
+      "$path": "src/ReplicatedStorage/HTMLToRoblox"
+    }
+  }
+} 

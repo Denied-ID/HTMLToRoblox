@@ -1,0 +1,12 @@
+{
+  "name": "HTMLToRoblox",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "HTMLToRoblox": {
+        "$path": "src/ReplicatedStorage/HTMLToRoblox"
+      }
+    }
+  }
+}
