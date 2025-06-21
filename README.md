@@ -2,7 +2,7 @@
 
 
 # THIS IS ALPHA SOFTWARE!
-This is not at all ready for production use, but more for testing enviornments.
+This is not at all ready for production use, but more for testing environments.
 I'm just trying to get this out there for bug testing.
 
 
