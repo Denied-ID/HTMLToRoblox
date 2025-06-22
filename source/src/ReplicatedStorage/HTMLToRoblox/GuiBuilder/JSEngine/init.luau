@@ -1,5 +1,7 @@
 local JSTranspiler = require(script.JSTranspiler)
+local StdLib = require(script:WaitForChild("StdLib"))
 local JSEngine = {}
+JSEngine.StdLib = StdLib
 JSEngine.GuiRegistry = {}
 JSEngine.variables = {}
 function JSEngine.register(id, gui)

@@ -1,7 +1,11 @@
 local CssParser = {}
 
 local function trim(s)
-	return s:match("^%s*(.-)%s*$")
+	return (s and s:match("^%s*(.-)%s*$")) or ""
+end
+
+local function stripComments(text)
+	return text:gsub("/%%*.-%%*/", "")
 end
 
 local function parseTransitionValue(value)
@@ -23,7 +27,9 @@ end
 local function parseDeclarations(declarations)
 	local styles = {}
 	for prop, val in declarations:gmatch("([%w%-]+)%s*:%s*([^;]+);?") do
-		local key = prop:lower()
+		-- Normalize property keys by removing hyphens/underscores so that
+		-- "background-color" -> "backgroundcolor" to match inline-style handling
+		local key = prop:lower():gsub("[-_]", "")
 		if key == "transition" then
 			styles[key] = parseTransitionValue(val)
 		else
@@ -34,12 +40,18 @@ local function parseDeclarations(declarations)
 end
 
 function CssParser.parse(cssText)
+	cssText = stripComments(cssText or "")
 	local stylesBySelector = {}
 
-	for selector, declarations in cssText:gmatch("([^{}]+){([^}]+)}") do
-		selector = trim(selector)
+	for selectorGroup, declarations in cssText:gmatch("([^{}]+)%s*{([^}]*)}") do
 		local styles = parseDeclarations(declarations)
-		stylesBySelector[selector] = styles
+
+		for selector in selectorGroup:gmatch("[^,]+") do
+			selector = trim(selector)
+			if selector ~= "" then
+				stylesBySelector[selector] = styles
+			end
+		end
 	end
 
 	return stylesBySelector

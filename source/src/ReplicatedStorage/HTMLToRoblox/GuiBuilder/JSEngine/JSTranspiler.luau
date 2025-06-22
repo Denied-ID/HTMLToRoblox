@@ -30,6 +30,14 @@ function JSTranspiler.transpile(js)
 		"JSEngine.setValue('%1', %2)"
 	)
 	js = js:gsub(";", "")
+	js = js:gsub("setTimeout%(", "JSEngine.StdLib.setTimeout(")
+		:gsub("clearTimeout%(", "JSEngine.StdLib.clearTimeout(")
+		:gsub("setInterval%(", "JSEngine.StdLib.setInterval(")
+		:gsub("clearInterval%(", "JSEngine.StdLib.clearInterval(")
+		:gsub("parseInt%(", "JSEngine.StdLib.parseInt(")
+		:gsub("parseFloat%(", "JSEngine.StdLib.parseFloat(")
+		:gsub("JSON%.stringify%(", "JSEngine.StdLib.JSON.stringify(")
+		:gsub("JSON%.parse%(", "JSEngine.StdLib.JSON.parse(")
 	return js
 end
 function JSTranspiler.executeDirectly(jsCode, JSEngine)
