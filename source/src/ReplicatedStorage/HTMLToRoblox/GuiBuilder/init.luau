@@ -24,6 +24,22 @@ local function applyHoverActiveStates(gui, tag, computedHoverStyles, computedAct
 	if tag == "a" and props and props.attributes and props.attributes.href then
 		-- Apply default link styling if not explicitly styled
 		local hasTextColor = false
+		local hasCustomStyles = false
+		
+		-- Check if custom color styles are specified for the link
+		if props.attributes.style then
+			-- Parse inline styles to check for custom color
+			for rule in props.attributes.style:gmatch("[^;]+") do
+				local key, value = rule:match("^%s*([^:]+):%s*(.-)%s*$")
+				if key and value and normalizeKey(key) == "color" then
+					hasTextColor = true
+					hasCustomStyles = true
+					break
+				end
+			end
+		end
+		
+		-- Also check hover styles
 		if computedHoverStyles then
 			for k, _ in pairs(computedHoverStyles) do
 				if normalizeKey(k) == "color" then
@@ -34,22 +50,15 @@ local function applyHoverActiveStates(gui, tag, computedHoverStyles, computedAct
 		end
 		
 		-- If no hover color specified, add default link hover color
-		if not hasTextColor and (gui:IsA("TextLabel") or gui:IsA("TextButton")) then
+		if not hasTextColor and not hasCustomStyles and (gui:IsA("TextLabel") or gui:IsA("TextButton")) then
 			computedHoverStyles = computedHoverStyles or {}
 			computedHoverStyles.color = "#0000EE" -- Default link color
 			
-			-- If no base color was specified, set it to blue
-			if not gui:GetAttribute("HasCustomTextColor") then
-				gui.TextColor3 = Color3.fromRGB(0, 0, 238) -- Default link color
-				gui:SetAttribute("HasCustomTextColor", true)
-				
-				-- Add underline by default for links
-				if not gui:GetAttribute("HasCustomTextDecoration") then
-					gui.TextStrokeTransparency = 0.8
-					gui.TextStrokeColor3 = gui.TextColor3
-					gui:SetAttribute("HasCustomTextDecoration", true)
-				end
-			end
+			-- Apply default blue color, but don't mark it as custom styling
+			gui.TextColor3 = Color3.fromRGB(0, 0, 238) -- Default link color
+			
+			-- We no longer apply text stroke to simulate underlining - it causes visual issues
+			-- Links now just use the blue color without additional styling
 		end
 	end
 	
@@ -309,6 +318,10 @@ local function applyRichTextStyles(content, styleString)
 		elseif property == "fontsize" then
 			local sizeValue = ComponentRegistry.parseSize(value)
 			if sizeValue then
+				-- Convert HTML-style font size (1-7) to pixels if needed
+				if type(sizeValue) == "number" and sizeValue <= 7 then
+					sizeValue = (sizeValue * 2) + 10
+				end
 				styledContent = string_format('<font size="%d">%s</font>', sizeValue, styledContent)
 			end
 		end
@@ -440,26 +453,28 @@ function GuiBuilder.buildChild(parent, child, order, cssTables)
 		if child:match("^%s+$") then
 			return
 		end
-		-- Skip adding raw text directly under a <select> element
-		if parent:GetAttribute("HtmlTag") == "select" then
-			return 
-		end
-		if isRichTextContainer then
-			parent.Text = parent.Text .. escapeText(child, true)
-		else
-		local textLabel = Instance.new("TextLabel")
-		textLabel.BackgroundTransparency = 1
-			textLabel.Text = escapeText(child)
-			textLabel.RichText = true
-			textLabel.TextWrapped = true
-			textLabel.AutomaticSize = Enum.AutomaticSize.XY
-			textLabel.Size = UDim2.new(0, 0, 0, 0)
-			textLabel.TextXAlignment = Enum.TextXAlignment.Left
-			textLabel.Parent = parent
-			textLabel.LayoutOrder = order
-			textLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-		textLabel.Font = Enum.Font.SourceSans
-		textLabel.TextSize = 16
+			-- Skip adding raw text directly under a <select> element
+	if parent:GetAttribute("HtmlTag") == "select" then
+		return 
+	end
+	-- Trim leading and trailing whitespace before applying to GUI elements
+	local trimmedText = child:gsub("^%s+", ""):gsub("%s+$", "")
+	if isRichTextContainer then
+		parent.Text = parent.Text .. escapeText(trimmedText, true)
+	else
+	local textLabel = Instance.new("TextLabel")
+	textLabel.BackgroundTransparency = 1
+		textLabel.Text = escapeText(trimmedText)
+		textLabel.RichText = true
+		textLabel.TextWrapped = true
+		textLabel.AutomaticSize = Enum.AutomaticSize.XY
+		textLabel.Size = UDim2.new(0, 0, 0, 0)
+		textLabel.TextXAlignment = Enum.TextXAlignment.Left
+		textLabel.Parent = parent
+		textLabel.LayoutOrder = order
+		textLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+	textLabel.Font = Enum.Font.SourceSans
+	textLabel.TextSize = 16
 		end
 		return
 	end
@@ -492,7 +507,11 @@ function GuiBuilder.buildChild(parent, child, order, cssTables)
 						fontTag = fontTag .. " color=\"" .. child.attributes.color .. "\""
 					end
 					if child.attributes.size then
-						fontTag = fontTag .. " size=\"" .. child.attributes.size .. "\""
+						-- Make sure font size is applied correctly
+						local fontSize = tonumber(child.attributes.size) or 3
+						-- Convert HTML font size (1-7) to pixel size
+						local pixelSize = (fontSize * 2) + 10  -- Simple formula: size 3 = 16px
+						fontTag = fontTag .. " size=\"" .. pixelSize .. "\""
 					end
 				end
 				fontTag = fontTag .. ">"
@@ -525,6 +544,19 @@ function GuiBuilder.buildChild(parent, child, order, cssTables)
 			local computedStyles = {}
 			local computedHoverStyles = {}
 			local computedActiveStyles = {}
+			
+			-- Handle HTML attributes as inline styles
+			if child.attributes then
+				-- Handle bgcolor attribute
+				if child.attributes.bgcolor then
+					computedStyles.backgroundcolor = child.attributes.bgcolor
+				end
+				
+				-- Handle cellpadding for table elements
+				if child.tag == "table" and child.attributes.cellpadding then
+					child.cellpadding = tonumber(child.attributes.cellpadding) or 3
+				end
+			end
 			
 			-- Apply CSS from all style sheets
 			for _, cssTable in ipairs(cssTables) do
@@ -624,6 +656,11 @@ function GuiBuilder.buildChild(parent, child, order, cssTables)
 	if gui then
 		-- Apply base CSS styles immediately
 		applyCssToGui(gui, computedStyles)
+		
+		-- Store table cellpadding as attribute for child cells to access
+		if child.tag == "table" and child.cellpadding then
+			gui:SetAttribute("CellPadding", child.cellpadding)
+		end
 
 		-- Simple hover/active effects using CSS tables
 		if gui:IsA("GuiButton") then
@@ -732,6 +769,25 @@ function GuiBuilder.buildChild(parent, child, order, cssTables)
 							local baseWidth = gui.Size.X.Offset
 							gui.Size = UDim2.new(0, baseWidth * colspan, gui.Size.Y.Scale, gui.Size.Y.Offset)
 							gui:SetAttribute("ColSpan", colspan)
+						end
+					end
+					
+					-- Apply cell padding if parent table has it
+					local parentTable = parent
+					while parentTable and not parentTable:GetAttribute("HtmlTag") do
+						parentTable = parentTable.Parent
+					end
+					
+					if parentTable and parentTable:GetAttribute("HtmlTag") == "table" then
+						local cellpadding = parentTable:GetAttribute("CellPadding")
+						if cellpadding and cellpadding > 0 then
+							-- Apply padding to the cell
+							local padding = gui:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+							padding.PaddingLeft = UDim.new(0, cellpadding)
+							padding.PaddingRight = UDim.new(0, cellpadding)
+							padding.PaddingTop = UDim.new(0, cellpadding)
+							padding.PaddingBottom = UDim.new(0, cellpadding)
+							padding.Parent = gui
 						end
 					end
 					

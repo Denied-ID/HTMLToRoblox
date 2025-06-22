@@ -1113,7 +1113,7 @@ ComponentRegistry.registry = {
 			layout.FillDirection = Enum.FillDirection.Horizontal
 			layout.Padding = UDim.new(0, 5)
 			layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-			layout.VerticalAlignment = Enum.VerticalAlignment.Top
+			layout.VerticalAlignment = Enum.VerticalAlignment.Center
 			
 			-- Store form attributes
 			if props.attributes then
@@ -1162,8 +1162,8 @@ ComponentRegistry.registry = {
 	table = {
 		create = function(props)
 			local frame = Instance.new("Frame")
-			frame.AutomaticSize = Enum.AutomaticSize.Y
-			frame.Size = UDim2.new(1, 0, 0, 0)
+			frame.AutomaticSize = Enum.AutomaticSize.XY
+			frame.Size = UDim2.new(0, 0, 0, 0)
 
 			-- Parse table attributes
 			local attrs = props.attributes or {}
@@ -1610,7 +1610,7 @@ ComponentRegistry.registry = {
 	br = {
 		create = function(props)
 			local frame = Instance.new("Frame")
-			frame.Size = UDim2.new(1, 0, 0, 10)
+			frame.Size = UDim2.new(1, 0, 0, 17)
 			frame.BackgroundTransparency = 1
 			return frame
 		end,
