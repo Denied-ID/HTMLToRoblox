@@ -8,7 +8,7 @@ I'm just trying to get this out there for bug testing.
 
 
 # Where's the Documentation?
-Well you're in luck. It's right over here on this website: https://systech-corp-1.gitbook.io/
+Well you're in luck. It's right over here on this website: https://systech-corp-1.gitbook.io/html-to-roblox/
 
 #  What's "HTML to Roblox"?
 HTML to Roblox is an up and coming module that allows you to place HTML code into the module, and have it convert the contents of that HTML into a Roblox Gui.
