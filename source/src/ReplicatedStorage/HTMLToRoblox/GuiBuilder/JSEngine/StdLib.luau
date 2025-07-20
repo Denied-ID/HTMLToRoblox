@@ -121,4 +121,103 @@ StdLib.Object = {
     end,
 }
 
+-- DOM helpers
+StdLib.DOM = {
+    -- Create a new element
+    createElement = function(tagName)
+        return {
+            tagName = tagName,
+            attributes = {},
+            children = {},
+            style = {},
+            
+            -- Methods
+            setAttribute = function(self, name, value)
+                self.attributes[name] = value
+                return self
+            end,
+            
+            appendChild = function(self, child)
+                table.insert(self.children, child)
+                return self
+            end,
+            
+            setStyle = function(self, property, value)
+                self.style[property] = value
+                return self
+            end,
+            
+            setInnerHTML = function(self, html)
+                self.innerHTML = html
+                return self
+            end,
+            
+            setInnerText = function(self, text)
+                self.innerText = text
+                return self
+            end
+        }
+    end,
+    
+    -- Query selector helpers
+    querySelector = function(selector)
+        -- This is a stub - the actual implementation is in JSEngine
+        return nil
+    end,
+    
+    querySelectorAll = function(selector)
+        -- This is a stub - the actual implementation is in JSEngine
+        return {}
+    end,
+    
+    -- Event handling
+    addEventListener = function(element, eventType, handler)
+        -- This is a stub - the actual implementation is in JSEngine
+    end,
+    
+    -- Form validation
+    validateForm = function(formElement)
+        -- This is a stub - the actual implementation is in JSEngine
+        return true
+    end
+}
+
+-- Window helpers
+StdLib.Window = {
+    alert = function(message)
+        print("ALERT: " .. tostring(message))
+    end,
+    
+    confirm = function(message)
+        print("CONFIRM: " .. tostring(message))
+        return true -- Always return true in this implementation
+    end,
+    
+    prompt = function(message, defaultValue)
+        print("PROMPT: " .. tostring(message) .. " (default: " .. tostring(defaultValue) .. ")")
+        return defaultValue
+    end,
+    
+    open = function(url)
+        print("Opening URL: " .. tostring(url))
+        -- This would normally open a new window, but we'll just print it
+    end,
+    
+    location = {
+        href = "",
+        host = "",
+        pathname = "",
+        search = "",
+        hash = "",
+        
+        reload = function()
+            print("Reloading page")
+        end,
+        
+        replace = function(url)
+            print("Replacing location with: " .. tostring(url))
+        end
+    }
+}
+
 return StdLib 
